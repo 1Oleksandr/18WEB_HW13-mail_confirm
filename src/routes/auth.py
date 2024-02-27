@@ -1,3 +1,4 @@
+import pickle
 from fastapi import APIRouter, HTTPException, Depends, status, Path, Query, Security, BackgroundTasks, Request
 from fastapi.security import OAuth2PasswordRequestForm, HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +20,8 @@ async def signup(body: UserSchema, background_tasks: BackgroundTasks, request: R
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists")
     body.password = auth_service.get_password_hash(body.password)
     new_user = await repositories_users.create_user(body, db)
+    auth_service.cache.set(new_user.email, pickle.dumps(new_user))
+    auth_service.cache.expire(new_user.email, 300)
     background_tasks.add_task(send_email, new_user.email, new_user.username, str(request.base_url))
     return new_user
 
