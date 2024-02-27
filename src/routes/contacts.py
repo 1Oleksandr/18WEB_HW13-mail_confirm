@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, status, Path, Query
+from fastapi_limiter.depends import RateLimiter
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 # from asyncpg.exceptions import UniqueViolationError
@@ -17,7 +18,8 @@ search_router = APIRouter(prefix='/search', tags=['search'])
 access_to_route_all = RoleAccess([Role.admin, Role.moderator])
 
 
-@router.get("/", response_model=list[ContactResponse])
+@router.get("/", response_model=list[ContactResponse], description='No more than 1 request per 10 seconds',
+            dependencies=[Depends(RateLimiter(times=1, seconds=10))])
 async def get_contacts(limit: int = Query(10, ge=10, le=500), offset: int = Query(0, ge=0),
                     db: AsyncSession = Depends(get_db), user: User = Depends(auth_service.get_current_user)):
     # if user.role == Role.admin:
@@ -76,7 +78,9 @@ async def get_contact(contact_id: int = Path(ge=1), db: AsyncSession = Depends(g
     return contact
 
 
-@router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED,
+             description='No more than 1 request per 10 seconds',
+            dependencies=[Depends(RateLimiter(times=1, seconds=10))])
 async def create_contact(body: ContactSchema, db: AsyncSession = Depends(get_db), user: User = Depends(auth_service.get_current_user)):
     # cont = await repositories_contacts.get_contact_by_email(body.email, db)
     # if cont is not None:
