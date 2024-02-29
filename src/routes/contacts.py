@@ -79,7 +79,7 @@ async def get_contact(contact_id: int = Path(ge=1), db: AsyncSession = Depends(g
 
 
 @router.post("/", response_model=ContactResponse, status_code=status.HTTP_201_CREATED,
-             description='No more than 1 request per 10 seconds',
+            description='No more than 1 request per 10 seconds',
             dependencies=[Depends(RateLimiter(times=1, seconds=10))])
 async def create_contact(body: ContactSchema, db: AsyncSession = Depends(get_db), user: User = Depends(auth_service.get_current_user)):
     # cont = await repositories_contacts.get_contact_by_email(body.email, db)

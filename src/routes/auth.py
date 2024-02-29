@@ -5,9 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database.db import get_db
 from src.repository import users as repositories_users
-from src.schemas.user import UserSchema, TokenSchema, UserResponse, RequestEmail
+from src.schemas.user import UserSchema, TokenSchema, UserResponse, RequestEmail, UserResetPassword
 from src.services.auth import auth_service
-from src.services.email import send_email
+from src.services.email import send_email, send_reset_passw_email
 
 auth_router = APIRouter(prefix='/api/auth', tags=['auth'])
 get_refresh_token = HTTPBearer()
@@ -79,3 +79,30 @@ async def request_email(body: RequestEmail, background_tasks: BackgroundTasks, r
     if user:
         background_tasks.add_task(send_email, user.email, user.username, str(request.base_url))
     return {"message": "Check your email for confirmation."}
+
+@auth_router.post('/reset_password')
+async def reset_passw_email(body: RequestEmail, background_tasks: BackgroundTasks, request: Request,
+                        db: AsyncSession = Depends(get_db)):
+    user = await repositories_users.get_user_by_email(body.email, db)
+
+    if user:
+        background_tasks.add_task(send_reset_passw_email, user.email, user.username, str(request.base_url))
+        return {"message": "Check your email for update your password"}
+    else:
+        return {"message": "User with email doesn't exist"}
+    
+@auth_router.get('/form_reset_password/{token}')
+async def recieve_conf_reset_passw():
+    return {"message": "We recieved confirmation for update password"}
+    
+@auth_router.post('/form_reset_password/{token}')
+async def confirmed_reset_passw(body: UserResetPassword, token: str, db: AsyncSession = Depends(get_db)):
+    email = await auth_service.get_email_from_token(token)
+    user = await repositories_users.get_user_by_email(email, db)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification error")
+    new_password = auth_service.get_password_hash(body.password2)
+    if not auth_service.verify_password(body.password1, new_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Passwords are not the same")
+    await repositories_users.update_password(user, new_password, db)
+    return {"message": "Password was updated successfully!"}

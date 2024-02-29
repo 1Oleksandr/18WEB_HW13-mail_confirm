@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi_limiter import FastAPILimiter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 # from typing import List
@@ -34,17 +35,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+BASE_DIR = Path(".")
+
+app.mount("/static", StaticFiles(directory=BASE_DIR / "src" / "static"), name="static")
+
 app.include_router(contacts.router)
 app.include_router(contacts.search_router)
 app.include_router(auth.auth_router)
 app.include_router(users.router)
-
-# @app.on_event("startup")
-# async def startup():
-#     r = await redis.Redis(host=config.REDIS_DOMAIN, port=config.REDIS_PORT, db=0, 
-#                           password=config.REDIS_PASSWORD, encoding="utf-8",
-#                           decode_responses=True)
-#     await FastAPILimiter.init(r)
 
 @app.get("/")
 def read_root():
