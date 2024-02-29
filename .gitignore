@@ -3,6 +3,7 @@
 /workspace.xml
 # Ignore dir pycache
 **/__pycache__
+/postgres-data
 .env
 # Compiled source #
 ###################
